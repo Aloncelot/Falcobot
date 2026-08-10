@@ -1,0 +1,5 @@
+# Ignorar variables de entorno
+.env
+
+# Ignorar la caché de Python (buena práctica)
+__pycache__/
