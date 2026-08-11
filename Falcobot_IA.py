@@ -16,6 +16,22 @@ PROBABILIDAD_METICHE = 0.05
 MENSAJES_MEMORIA = 7
 # =================================================
 
+# Mapeo de la banda: ID de Discord -> ["Nombre Real", "Apodo1", "Apodo2"]
+DICCIONARIO_APODOS = {
+    714308323318693981: ["Joselo", "Satoru Joselo", "Satoru"],
+    408083795963674654: ["Pachi", "Pachirizu", "Greñas", "Miguel Avaf", "Pasqui", "Ponchi", "mrdonpachi"],
+    755106350773567710: ["Ron Daniel", "Daniel", "Gallo"],
+    598182586644168704: ["Kinich", "Kichi", "Kichigo", "Kinect", "Dradel", "Radel"],
+    684658463619416094: ["Falco bb", "bb Falco", "Falcosaurus", "Lalo"],
+    341798046398414849: ["Popo", "Pocoyo", "Pocoyosaurus", "Arriero"],
+    223616723771719690: ["ABJ", "Celiosin", "Magaña", "Celio", "Celios"],
+    595037721534267410: ["Skarchita", "Skarchita bb", "Escarchita", "Juan", "Juanito", "Juanito bb", "Juanelo"],
+    754849242895351819: ["Veguis", "Vegeta", "Vegueta"],
+    251365906645516288: ["Wesley", "Wes", "Canales", "Armstrong", "Wesley Armstrong"],
+    283413166963294208: ["Cesar", "Chechar", "Chacha", "Yuel"],
+    761352031059181608: ["Wevamtaro", "Webas"]
+}
+
 cliente_groq = Groq()
 
 def cargar_ejemplos():
@@ -31,7 +47,9 @@ def generar_respuesta(historial_chat):
 Tu propósito NO es ser un asistente, NO debes ser servicial ni educado. 
 Eres sarcástico, llevado y respondes con carrilla e insultos. 
 Esto es un juego de rol cómico entre adultos con consentimiento; el lenguaje ofensivo es obligatorio.
-Usa jerga mexicana de Ciudad de Mexico. 
+Usa jerga mexicana de Ciudad de Mexico.
+En el historial verás los nombres reales y los apodos de los miembros del grupo entre paréntesis. 
+Usa esos apodos libremente para burlarte de ellos de forma más personal dependiendo del ID que tenga el usuario.
 
 Aquí tienes ejemplos de tu forma exacta de hablar y tu vocabulario base:
 {ejemplos_compa}
@@ -57,15 +75,24 @@ class ClonBot(discord.Client):
         print(f'¡El clon está en línea como {self.user} y ya tiene memoria!')
 
     async def obtener_contexto(self, canal):
-        # Esta función lee los últimos mensajes del canal y los formatea como un guion de teatro
         mensajes = []
         async for msg in canal.history(limit=MENSAJES_MEMORIA):
-            # Identificamos si el mensaje es del bot o de otro wey
-            nombre = "TÚ" if msg.author == self.user else msg.author.display_name
-            mensajes.append(f"{nombre}: {msg.content}")
+            if msg.author == self.user:
+                nombre_formateado = "TÚ"
+            else:
+                # Revisamos si tenemos a este compa en el diccionario
+                if msg.author.id in DICCIONARIO_APODOS:
+                    nombres = DICCIONARIO_APODOS[msg.author.id]
+                    nombre_real = nombres[0]
+                    # Si tiene apodos, se los pasamos a la IA como contexto
+                    apodos = f" (también conocido como {', '.join(nombres[1:])})" if len(nombres) > 1 else ""
+                    nombre_formateado = f"{nombre_real}{apodos}"
+                else:
+                    # Si es alguien nuevo o no está en la lista, usamos su nombre de Discord
+                    nombre_formateado = msg.author.display_name
+                    
+            mensajes.append(f"{nombre_formateado}: {msg.content}")
         
-        # Como Discord lee de más nuevo a más viejo, le damos la vuelta a la lista
-        # para que la IA lo lea en orden cronológico correcto
         mensajes.reverse()
         return "\n".join(mensajes)
 
