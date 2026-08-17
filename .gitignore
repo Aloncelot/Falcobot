@@ -3,3 +3,5 @@
 
 # Ignorar la caché de Python (buena práctica)
 __pycache__/
+
+*.zip
