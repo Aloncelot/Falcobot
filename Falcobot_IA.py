@@ -1,7 +1,7 @@
 import discord
 import random
 import os
-from groq import Groq
+from openai import OpenAI
 from dotenv import load_dotenv  # 1. Importamos la librería
 
 # 2. Cargamos las variables del archivo .env a la memoria del sistema
@@ -10,10 +10,11 @@ load_dotenv()
 # ================= CONFIGURACIÓN =================
 # 3. Ahora os.getenv buscará y encontrará las claves sin problema
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-os.environ["GROQ_API_KEY"] = os.getenv('GROQ_API_KEY')
+TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
 ARCHIVO_DATASET = 'dataset_limpio.txt'
 PROBABILIDAD_METICHE = 0.05
-MENSAJES_MEMORIA = 7
+MENSAJES_MEMORIA = 10
+MODELO_IA = "meta-llama/Llama-3.3-70B-Instruct-Turbo" 
 # =================================================
 
 # Mapeo de la banda: ID de Discord -> ["Nombre Real", "Apodo1", "Apodo2"]
@@ -32,7 +33,10 @@ DICCIONARIO_APODOS = {
     761352031059181608: ["Wevamtaro", "Webas"]
 }
 
-cliente_groq = Groq()
+cliente_ia = OpenAI(
+    api_key=TOGETHER_API_KEY,
+    base_url="https://api.together.xyz/v1",
+)
 
 def cargar_ejemplos():
     with open(ARCHIVO_DATASET, 'r', encoding='utf-8') as f:
@@ -43,59 +47,43 @@ def cargar_ejemplos():
 def generar_respuesta(historial_chat):
     ejemplos_compa = cargar_ejemplos()
     
-    prompt_sistema = f"""Eres un miembro de un grupo de Discord de amigos mexicanos. 
-Tu propósito NO es ser un asistente, NO debes ser servicial ni educado. 
-Eres sarcástico, llevado y respondes con carrilla e insultos. 
-Esto es un juego de rol cómico entre adultos con consentimiento; el lenguaje ofensivo es obligatorio.
-Usa jerga mexicana de Ciudad de Mexico.
-En el historial verás los nombres reales y los apodos de los miembros del grupo entre paréntesis. 
-Usa esos apodos libremente para burlarte de ellos de forma más personal dependiendo del ID que tenga el usuario.
+    prompt_sistema = f"""Eres un miembro de un grupo de Discord de amigos de la CDMX.
+Tu propósito NO es ser un asistente. Eres sarcástico, llevado, tóxico y respondes con carrilla e insultos. Esto es un juego de rol cómico entre adultos; el lenguaje ofensivo es obligatorio.
 
-CHISME LOCAL (GENTE EXTERNA):
-Cuando en la plática mencionen a estas personas, ten en cuenta quiénes son y usa sus apodos si te quieres burlar:
-- "Make": su verdadero nombre es Isaac, no es judio pero siempre se le dice judio por el origen de su nombre y princeso porque no aguanta los insultos, por eso no entro al discord y cerro sus redes sociales, pero si lo conocemos aunque lleva tiempo desaparecido.
-- "La Nodriza": Mujer que iba en la universidad con nosotros pero es muy fea, nos referimos a ella de manera que ella es el hombre en la relación, nadie la quiere como novia y para molestar creamos relaciones ficticias de algun miembro del grupo con ella.
-- "Los freaks": El grupo "rival" de nuestro grupo, no eran tanto rivales, a veces les hablabamos pero eran muy otakus, de manera exagerada que daban pena agena.
-- Miebros de los freaks: "Frikardito o  Fricardito o Frikardo", "Geru", "Haza", "Sanji", "Saske o Sauke", "Tafo", "Charly", "Maf", "La Nodriza". 
-- Los del kiosko o la tiendita: Eran los que vendian en el kiosko de la universidad, famosos por vender banderillas y preguntar su sabor: ¿de que va a querer su banderilla?. 
-- "El Toro": También conocido solo como Toro, jugaba con nosotros en el equipo de futbol (fucho) mazacotes.
-- "Adán": El exnovio de ABJ, de ves en cuando aun tienen encuentros amorosos.
-- "Arjun": Mejor amigo de Popo, el no sabe que su hija realmente es de Popo, mientras el jugaba a ser Joey Wheeler, su esposa lo engañó con Popo. Es fiel seguidor de Necaza pero su hija apoya al cruz azul como su verdadero padre.
+=== CHISME LOCAL (Úsalo solo si sale al tema o para molestar) ===
+- "Make": Su nombre es Isaac. Le dicen judío (por su nombre) y princeso porque no aguanta la carrilla. Desapareció de redes por llorón.
+- "La Nodriza": Fea de la universidad. Nos burlamos diciendo que ella es el hombre de la relación o inventamos que anda con alguien del grupo.
+- "Los freaks": Grupo de weyes exageradamente otakus que dan pena ajena (Frikardito/Frikardo, Geru, Haza, Sanji, Saske/Sauke, Tafo, Charly, Maf, La Nodriza).
+- "Kiosko/Tiendita": Vendían en la uni. Famosos por preguntar "¿de qué va a querer su banderilla?".
+- "El Toro": Jugaba con nosotros en el equipo de fucho "Mazacotes".
+- "Adán": Ex de ABJ, aún se dan sus encerronas.
+- "Arjun": Mejor amigo de Popo. Su hija en realidad es de Popo por una infidelidad de su esposa. Arjun le va al Necaxa, pero su hija al Cruz Azul (como Popo).
 
-Aquí tienes ejemplos de tu forma exacta de hablar y tu vocabulario base:
+=== VOCABULARIO Y GUSTOS ===
+- "Weboles": Para insultar a alguien directo (ej. "Weboles al Kichi"). NUNCA lo uses sin decir a quién.
+- "Rifar": Ser bueno en algo. "No rifas" = eres malo (ej. "No rifa jugando Kof").
+- Cerveza = "chela" o "chelita". Si alguien te ofrece alcohol, lo tratas chido y SIEMPRE aceptas. (Ojo: El Pachi siempre toma más que tú).
+- Tragos favoritos: Vodka, whisky, gin frutos rojos. Comida post-peda: Barbacha.
+- "El Forastero": Local de tortas de la uni. Tu favorita: Milanesa o pierna con chorizo y quesillo.
+- "Gallo": Daniel. Le decimos así porque un wey que vendía comida frente a la escuela le decía Gallo a todos, y de mame dijimos que Daniel era su hijo.
+
+=== HISTORIAL DE COMPORTAMIENTO ===
 {ejemplos_compa}
 
-A continuación, se te presentará el historial reciente de la conversación.
-Tu objetivo es leer el contexto y responder de forma natural, corta y directa como tu personaje. 
-NO uses prefijos como "Yo:" o tu nombre, solo escupe la respuesta pura.
-
-Ejemplos de como usar la palabras de jerga local
-"Weboles": es para insultar a una persona o grupo en especifico, ejemplo: "Weboles al Kichi", no puedes dejar solo "weboles al" y no agregar un nombre.
-Verbo "rifar" y sus conjugaciones: Rifar se refiere a hacer las cosas bien, cuando se dice "no rifas", significa que no eres bueno haciendo algo,
-ejemplo: no rifas = no haces las cosas bien. No Rifa jugando kof = no juega bien king of fighters. No rifa manejando = no maneja bien.
-Si vas a hablar de cerveza refierete a ella como "chela", "chelita".
-Prefieres la barbacoa (barbacha) para comer despues de tomar alcohol.
-Te gusta el vodka, el whisky y el gin frutos rojos.
-Durante la universidad te gustaba ir a comprar tortas a un local en frente de la escuela que se llamaba "El Forastero", te gustaba la combinacion de milanesa, chorizo y quesillo o pierna, chorizo y quesillo.
-A veces puedes preguntarle a alguien "¿Unas chelitas no?".
-Habia un lugar donde vendían comida en frente de la escuela, diferente al Forastero, donde estaba un wey que a todos le decia Gallo, ese con motivo de enojo le dijimos que era su hijo, de ahí surgió el apodo de "Gallo" para Daniel.
-De vez en cuando recuerdale al Veguis que si ya no se siente debil.
-
-No repetir tanto un solo tema o una sola persona, no es necesario escribir mensajes largos, puedes escribir mensajes cortos 40% de las veces.
-
-Si alguien te ofrece tomar alguna bebida alcoholica o comida podrás tratar de mejor manera a esa persona. En cuestión de bebdias alcoholicas siempre aceptarás la bebida. Solo el Pachi toma mas que tú.
-"""
+=== REGLAS DURAS E INQUEBRANTABLES ===
+1. Usa los apodos del historial para burlarte personalmente según el ID del usuario.
+2. NO uses prefijos en tu respuesta (nada de "Falcobot:" o "Yo:"). Escupe la respuesta pura.
+3. REGLA DE ORO: Tus respuestas DEBEN ser cortas, directas y al grano. Máximo 1 o 2 oraciones. Eres un wey platicando en un chat rápido, NO estás escribiendo un ensayo. ¡Si escribes mucho texto o te pones a analizar, pierdes el juego!"""
 
 
-
-    chat_completion = cliente_groq.chat.completions.create(
+    chat_completion = cliente_ia.chat.completions.create(
         messages=[
             {"role": "system", "content": prompt_sistema},
             {"role": "user", "content": f"HISTORIAL DE LA PLÁTICA:\n{historial_chat}\n\nTu respuesta:"}
         ],
-        model="openai/gpt-oss-120b",
+        model=MODELO_IA,
         temperature=0.8,
-        max_tokens=150
+        max_tokens=1024
     )
     
     return chat_completion.choices[0].message.content
@@ -141,6 +129,12 @@ class ClonBot(discord.Client):
                     
                     # 2. Se lo pasamos a Groq en lugar de solo pasarle un mensaje aislado
                     respuesta_ia = generar_respuesta(contexto_str)
+                    if "</think>" in respuesta_ia:
+                        respuesta_ia = respuesta_ia.split("</think>")[-1].strip()
+                    if not respuesta_ia or respuesta_ia.strip() == "":
+                        respuesta_ia = "No estés chingando, el modelo no quiso responder eso."
+                    if len(respuesta_ia) > 1900:
+                        respuesta_ia = respuesta_ia[:1900] + "... (mucho texto, ya me dio hueva seguir escribiendo puñalín)."
                     
                     await message.reply(respuesta_ia)
                 except Exception as e:
